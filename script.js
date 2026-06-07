@@ -127,7 +127,7 @@
     for (let i = 0; i < m; i++) {
       let t = outSmooth[i];
       let hue = (i / m) * 360;
-      let vividColor = `hsl(${hue}, 85%, 50%)`;
+      let vividColor = `hsl(${hue}, 100%, 65%)`;
       const startX = boundary.x + i * cellWidth + cellWidth/2;
       const startY = boundary.y + boundary.height - boundary.height * 2/3 * t;
       const endX = startX, endY = boundary.y + boundary.height;

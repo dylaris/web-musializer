@@ -90,6 +90,7 @@ body {
 }
 .playlist-item.active {
   background: rgba(255, 150, 108);
+  color: #16161e;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 .track-name {
