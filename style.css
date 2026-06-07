@@ -93,6 +93,10 @@ body {
   color: #16161e;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
+.playlist-item.active .track-name,
+.playlist-item.active .marquee-content span {
+  color: #16161e;
+}
 .track-name {
   color: #c0caf5;
   font-weight: 500;
