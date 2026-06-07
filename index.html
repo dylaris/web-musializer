@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,16 +7,24 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="visualizer-canvas"></canvas>
-  <div class="ui-panel" id="uiPanel">
-    <div class="panel-header">
+  <div class="playlist-sidebar" id="playlistSidebar">
+    <div class="playlist-header">
       <h2>🎵 MUSIALIZER</h2>
-      <button class="toggle-panel-btn" id="collapsePanelBtn">✕</button>
     </div>
     <div class="playlist-section" id="playlistContainer">
       <div class="empty-playlist">🎤 Click below to add music</div>
     </div>
-    <div class="controls">
+    <div class="resize-handle-x" id="resizeHandleX"></div>
+  </div>
+
+  <div class="main-area">
+    <div class="viz-container" id="vizContainer">
+      <canvas id="visualizer-canvas"></canvas>
+    </div>
+
+    <div class="control-panel" id="controlPanel">
+      <div class="resize-handle-y" id="resizeHandleY"></div>
+
       <div class="progress-area">
         <div class="time-row">
           <span id="currentTime">0:00</span>
@@ -25,26 +32,36 @@
         </div>
         <input type="range" id="progressSlider" value="0" step="0.01">
       </div>
+
       <div class="buttons-row">
-        <button class="ctrl-btn" id="prevBtn" title="Previous">⏮</button>
-        <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause">▶</button>
-        <button class="ctrl-btn" id="nextBtn" title="Next">⏭</button>
+        <div class="ctrl-group">
+          <button class="ctrl-btn" id="prevBtn" title="Previous (A)">⏮</button>
+          <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause (Space)">▶</button>
+          <button class="ctrl-btn" id="nextBtn" title="Next (D)">⏭</button>
+        </div>
+        <div class="volume-compact">
+          <span class="volume-icon">🔊</span>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8">
+          <span class="volume-percent" id="volumePercent">80%</span>
+        </div>
       </div>
+
       <div class="mode-buttons">
         <button class="mode-btn" data-mode="list">📋 List Loop</button>
         <button class="mode-btn" data-mode="shuffle">🎲 Shuffle</button>
         <button class="mode-btn" data-mode="loop">🔂 Loop One</button>
       </div>
+
       <div class="upload-area">
         <button class="upload-btn" id="uploadBtn">➕ Add Music (MP3/WAV/OGG)</button>
         <input type="file" id="fileInput" multiple accept="audio/*" style="display:none">
       </div>
+
       <div class="now-playing" id="nowPlayingLabel">✨ No track loaded</div>
+      <div class="shortcut-hint">E: toggle UI | A/D: prev/next | W/S: volume | Q: mute | C: mode | Space: play/pause</div>
     </div>
   </div>
-  <div class="edge-reveal" id="edgeRevealBtn">
-    <button class="reveal-btn">🎛️</button>
-  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
