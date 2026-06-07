@@ -159,7 +159,6 @@
   // ---------- Rendering (bars + cone trail + glowing orb) ----------
   function fftRender(boundary, m) {
     const cellWidth = boundary.width / m;          // width of each frequency bar
-    const saturation = 0.85;                       // color saturation
 
     // Reinitialize trail arrays if bar count changed
     if (prevBarCount !== m) {
@@ -169,14 +168,14 @@
     }
 
     // Clear background (same dark color as original)
-    ctx.fillStyle = '#151515';
+    ctx.fillStyle = '#0D0C0C';
     ctx.fillRect(boundary.x, boundary.y, boundary.width, boundary.height);
 
     // 1. Draw bars (thickened and more vivid)
     for (let i = 0; i < m; i++) {
       let t = outSmooth[i];
       let hue = (i / m) * 360;
-      let vividColor = `hsl(${hue}, 85%, 65%)`;   // high saturation, medium brightness
+      let vividColor = `hsl(${hue}, 75%, 50%)`;   // high saturation, medium brightness
 
       const startPos = {
         x: boundary.x + i * cellWidth + cellWidth / 2,
@@ -186,8 +185,8 @@
         x: boundary.x + i * cellWidth + cellWidth / 2,
         y: boundary.y + boundary.height
       };
-      // Bar thickness: 0.55 * cellWidth * sqrt(amplitude) (much thicker than original)
-      const thick = cellWidth * 0.55 * Math.sqrt(t);
+      // Bar thickness: 0.35 * cellWidth * sqrt(amplitude) (much thicker than original)
+      const thick = cellWidth * 0.35 * Math.sqrt(t);
 
       ctx.beginPath();
       ctx.moveTo(startPos.x, startPos.y);
@@ -227,7 +226,7 @@
             const alpha = 0.85 * t;    // transparency increases towards the tip
             ctx.beginPath();
             ctx.arc(currX, interpY, radius, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 85%, 70%, ${alpha})`;
+            ctx.fillStyle = `hsla(${hue}, 80%, 65%, ${alpha})`;
             ctx.fill();
           }
         }
@@ -246,8 +245,7 @@
         x: boundary.x + i * cellWidth + cellWidth / 2,
         y: boundary.y + boundary.height - boundary.height * 2/3 * t
       };
-      let radius = cellWidth * 2.2 * Math.sqrt(t);
-      radius = Math.min(radius, cellWidth * 1.2);
+      let radius = cellWidth * 3.2 * Math.sqrt(t);
 
       // Main orb: radial gradient fading to transparent at edge
       const gradient = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius);
@@ -257,16 +255,6 @@
       ctx.beginPath();
       ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
       ctx.fillStyle = gradient;
-      ctx.fill();
-
-      // Inner glow (larger than before)
-      const innerRadius = radius * 0.65;
-      const innerGradient = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, innerRadius);
-      innerGradient.addColorStop(0, `hsl(${hue}, 95%, 85%)`);
-      innerGradient.addColorStop(1, `hsla(${hue}, 90%, 75%, 0.7)`);
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, innerRadius, 0, Math.PI * 2);
-      ctx.fillStyle = innerGradient;
       ctx.fill();
     }
   }
@@ -514,7 +502,7 @@
       const boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
       fftRender(boundary, m);
     } else {
-      ctx.fillStyle = '#151515';
+      ctx.fillStyle = '#0D0C0C';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
