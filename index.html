@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Web Musializer - Spectral Flow</title>
+  <link rel="stylesheet" href="assets/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -41,27 +42,36 @@
       <div class="buttons-row" id="buttonsRow">
         <!-- Playback controls group -->
         <div class="ctrl-group">
-          <button class="ctrl-btn" id="prevBtn" title="Previous (A)">⏮</button>
-          <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause (Space)">▶</button>
-          <button class="ctrl-btn" id="nextBtn" title="Next (D)">⏭</button>
+          <!-- <button class="ctrl-btn" id="prevBtn" title="Previous (A)">⏮</button> -->
+          <!-- <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause (Space)">▶</button> -->
+          <!-- <button class="ctrl-btn" id="nextBtn" title="Next (D)">⏭</button> -->
+          <button class="ctrl-btn" id="prevBtn" title="Previous (A)"><i class="fas fa-backward"></i></button>
+          <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause (Space)"><i class="fas fa-play"></i></button>
+          <button class="ctrl-btn" id="nextBtn" title="Next (D)"><i class="fas fa-forward"></i></button>
         </div>
 
         <!-- Mode switch group (3 icon buttons, no text) -->
         <div class="mode-group">
-          <button class="mode-btn" data-mode="list" title="List repeat">🔁</button>
-          <button class="mode-btn" data-mode="shuffle" title="Shuffle">🔀</button>
-          <button class="mode-btn" data-mode="loop" title="Single repeat">🔂</button>
+          <!-- <button class="mode-btn" data-mode="list" title="List repeat">🔁</button> -->
+          <!-- <button class="mode-btn" data-mode="shuffle" title="Shuffle">🔀</button> -->
+          <!-- <button class="mode-btn" data-mode="loop" title="Single repeat">🔂</button> -->
+          <button class="mode-btn" data-mode="list" title="List repeat"><i class="fas fa-repeat"></i></button>
+          <button class="mode-btn" data-mode="shuffle" title="Shuffle"><i class="fas fa-random"></i></button>
+          <button class="mode-btn" data-mode="loop" title="Single repeat"><i class="fas fa-redo-alt"></i></button>
         </div>
 
         <!-- Add music button -->
-        <button class="upload-btn-inline" id="uploadBtn" title="Add music">➕</button>
+        <!-- <button class="upload-btn-inline" id="uploadBtn" title="Add music">➕</button> -->
+        <button class="upload-btn-inline" id="uploadBtn" title="Add music"><i class="fas fa-plus-circle"></i> Add</button>
 
         <!-- Help button -->
-        <button class="help-btn-icon" id="helpBtn" title="Shortcuts (?)">❓</button>
+        <!-- <button class="help-btn-icon" id="helpBtn" title="Shortcuts (?)">❓</button> -->
+        <button class="help-btn-icon" id="helpBtn" title="Shortcuts (?)"><i class="fas fa-question"></i></button>
 
         <!-- Volume control: icon + slider + percent, placed at the very end of button row -->
         <div class="volume-compact">
-          <span class="volume-icon" id="volumeIcon" title="Volume">🔊</span>
+          <!-- <span class="volume-icon" id="volumeIcon" title="Volume">🔊</span> -->
+          <span class="volume-icon" id="volumeIcon" title="Volume"><i class="fas fa-volume-up"></i></span>
           <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8">
           <span class="volume-percent" id="volumePercent">80%</span>
         </div>
@@ -79,7 +89,7 @@
   <div class="help-modal" id="helpModal">
     <div class="help-card">
       <div class="help-header">
-        <h3>⌨️ Keyboard Guide</h3>
+        <h3>Keyboard Guide</h3>
         <button class="close-help" id="closeHelpBtn">✕</button>
       </div>
       <div class="help-content">

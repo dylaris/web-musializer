@@ -419,10 +419,12 @@
 
   function toggleMute() {
     if (isMuted) {
+      document.getElementById('volumeIcon').innerHTML = '<i class="fas fa-volume-up"></i>';
       audioElement.volume = lastVolume;
       setVolume(lastVolume);
       isMuted = false;
     } else {
+      document.getElementById('volumeIcon').innerHTML = '<i class="fas fa-volume-mute"></i>';
       lastVolume = currentVolume;
       audioElement.volume = 0;
       isMuted = true;
@@ -541,7 +543,8 @@
       audioElement.pause();
       audioElement.src = '';
       isPlaying = false;
-      playPauseBtn.innerHTML = '▶';
+      // playPauseBtn.innerHTML = '▶';
+      playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
       currentTrackIndex = -1;
       nowPlayingLabel.innerText = '✨ No track loaded';
       durationSpan.innerText = '0:00';
@@ -603,13 +606,15 @@
     }
     await audioElement.play();
     isPlaying = true;
-    playPauseBtn.innerHTML = '⏸';
+    // playPauseBtn.innerHTML = '⏸';
+    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
   }
 
   function pauseCurrent() {
     audioElement.pause();
     isPlaying = false;
-    playPauseBtn.innerHTML = '▶';
+    // playPauseBtn.innerHTML = '▶';
+    playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
   }
 
   function togglePlayPause() {
@@ -655,7 +660,7 @@
 
   function updateNowPlaying() {
     if (playlist.length && playlist[currentTrackIndex]) {
-      nowPlayingLabel.innerText = `🎧 ${playlist[currentTrackIndex].name}`;
+      nowPlayingLabel.innerText = `✨ ${playlist[currentTrackIndex].name}`;
     } else {
       nowPlayingLabel.innerText = '✨ No track loaded';
     }
@@ -839,13 +844,16 @@
       currentTimeSpan.innerText = formatTime(audioElement.currentTime);
       updateProgressRange();
     });
-    audioElement.addEventListener('play', () => { isPlaying = true; playPauseBtn.innerHTML = '⏸'; });
-    audioElement.addEventListener('pause', () => { isPlaying = false; playPauseBtn.innerHTML = '▶'; });
+    // audioElement.addEventListener('play', () => { isPlaying = true; playPauseBtn.innerHTML = '⏸'; });
+    // audioElement.addEventListener('pause', () => { isPlaying = false; playPauseBtn.innerHTML = '▶'; });
+    audioElement.addEventListener('play', () => { isPlaying = true; playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>'; });
+    audioElement.addEventListener('pause', () => { isPlaying = false; playPauseBtn.innerHTML = '<i class="fas fa-play"></i>'; });
     volumeSlider.addEventListener('input', (e) => setVolume(parseFloat(e.target.value)));
   }
 
   function handleKeydown(e) {
     if (document.activeElement === searchInput) return;
+
     const key = e.key.toLowerCase();
     if (key === 'e') {
       e.preventDefault();
