@@ -21,9 +21,9 @@
 
   // Panel size persistence
   let leftWidth = parseInt(localStorage.getItem('pake-left-width')) || 280;
-  let panelHeight = parseInt(localStorage.getItem('pake-panel-height')) || 45;
+  let panelHeight = parseInt(localStorage.getItem('pake-panel-height')) || 35;
   const leftMin = 180, leftMax = Math.floor(window.innerWidth * 0.5);
-  const panelMin = 20, panelMax = 66;
+  const panelMin = 25, panelMax = 66;
 
   // Audio
   let audioElement = new Audio();
