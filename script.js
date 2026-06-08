@@ -30,7 +30,7 @@
 
   let playlist = [];
   let currentTrackIndex = 0;
-  let playMode = 'list';   // 'list', 'shuffle', 'loop'
+  let playMode = 'list';
 
   let currentVolume = 0.8;
   let isMuted = false;
@@ -40,7 +40,7 @@
   let isResizingX = false, isResizingY = false;
   let startX, startY, startWidth, startHeight;
 
-  // ---------- FFT core algorithm (unchanged) ----------
+  // ---------- FFT core algorithm ----------
   const FFT_SIZE = 8192;
   let inRaw = new Float32Array(FFT_SIZE);
   let inWin = new Float32Array(FFT_SIZE);
@@ -86,7 +86,9 @@
       }
     }
   }
+
   function amp(real, imag) { return Math.log(real*real + imag*imag); }
+
   function fftAnalyze(dt) {
     for (let i = 0; i < FFT_SIZE; i++) inWin[i] = inRaw[i] * hannWindow[i];
     for (let i = 0; i < FFT_SIZE; i++) { outRawReal[i] = inWin[i]; outRawImag[i] = 0; }
@@ -110,85 +112,315 @@
     }
     return m;
   }
+
   function fftPush(frame) {
     for (let i = 0; i < FFT_SIZE-1; i++) inRaw[i] = inRaw[i+1];
     inRaw[FFT_SIZE-1] = frame;
   }
-  let prevBarTopY = [], prevBarRadius = [], prevBarCount = 0;
-  function fftRender(boundary, m) {
-    const cellWidth = boundary.width / m;
-    if (prevBarCount !== m) {
-      prevBarTopY = new Array(m).fill(null);
-      prevBarRadius = new Array(m).fill(0);
-      prevBarCount = m;
-    }
-    ctx.fillStyle = '#0D0C0C';
-    ctx.fillRect(boundary.x, boundary.y, boundary.width, boundary.height);
-    for (let i = 0; i < m; i++) {
-      let t = outSmooth[i];
-      let hue = (i / m) * 360;
-      let vividColor = `hsl(${hue}, 100%, 65%)`;
-      const startX = boundary.x + i * cellWidth + cellWidth/2;
-      const startY = boundary.y + boundary.height - boundary.height * 2/3 * t;
-      const endX = startX, endY = boundary.y + boundary.height;
-      const thick = cellWidth * 0.25 * Math.sqrt(t);
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(endX, endY);
-      ctx.lineWidth = thick;
-      ctx.strokeStyle = vividColor;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-    }
-    for (let i = 0; i < m; i++) {
-      const tCurr = outSmooth[i];
-      if (tCurr < 0.01) continue;
-      const hue = (i / m) * 360;
-      const currX = boundary.x + i * cellWidth + cellWidth/2;
-      const currY = boundary.y + boundary.height - boundary.height * 2/3 * tCurr;
-      let ballRadius = cellWidth * 2.2 * Math.sqrt(tCurr);
-      ballRadius = Math.min(ballRadius, cellWidth * 1.2);
-      const maxTrailRadius = ballRadius * 0.55, minTrailRadius = maxTrailRadius * 0.15;
-      if (prevBarTopY[i] !== null) {
-        const prevY = prevBarTopY[i];
-        const dy = currY - prevY;
-        const distance = Math.abs(dy);
-        if (distance > 1) {
-          let steps = Math.min(30, Math.max(10, Math.floor(distance / 2)));
-          for (let step = 1; step <= steps; step++) {
-            const t = step / steps;
-            const interpY = prevY + dy * t;
-            const radius = minTrailRadius + (maxTrailRadius - minTrailRadius) * t;
-            const alpha = 0.85 * t;
-            ctx.beginPath();
-            ctx.arc(currX, interpY, radius, 0, Math.PI*2);
-            ctx.fillStyle = `hsla(${hue}, 80%, 65%, ${alpha})`;
-            ctx.fill();
-          }
-        }
-      }
-      prevBarTopY[i] = currY;
-      prevBarRadius[i] = ballRadius;
-    }
-    for (let i = 0; i < m; i++) {
-      let t = outSmooth[i];
-      if (t < 0.008) continue;
-      let hue = (i / m) * 360;
-      const centerX = boundary.x + i * cellWidth + cellWidth/2;
-      const centerY = boundary.y + boundary.height - boundary.height * 2/3 * t;
-      let radius = cellWidth * 3.2 * Math.sqrt(t);
-      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-      gradient.addColorStop(0, `hsl(${hue}, 92%, 78%)`);
-      gradient.addColorStop(0.4, `hsl(${hue}, 88%, 68%)`);
-      gradient.addColorStop(1, `hsla(${hue}, 80%, 55%, 0)`);
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI*2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
-    }
-  }
+
   function audioCallback(timeDomainData) {
     for (let i = 0; i < timeDomainData.length; i++) fftPush(timeDomainData[i]);
+  }
+
+  // ---------- HSV to RGB ----------
+  function hsvToRgb(h, s, v) {
+    let r, g, b;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      default: r = v; g = p; b = q; break;
+    }
+    return { r, g, b };
+  }
+
+  // ---------- WebGL renderer ----------
+  let gl, barProgram, circleProgram;
+  let glCanvas = null;
+  let barColorLoc, barPosLoc, barTexLoc;
+  let circleRadiusLoc, circlePowerLoc, circleColorLoc, circlePosLoc, circleTexLoc;
+
+  function compileShader(gl, src, type) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  function initWebGL() {
+    glCanvas = document.getElementById('gl-canvas');
+    if (!glCanvas) return false;
+    gl = glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
+    if (!gl) return false;
+
+    const vsSource = `
+      attribute vec2 a_position;
+      attribute vec2 a_texCoord;
+      varying vec2 v_texCoord;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        v_texCoord = a_texCoord;
+      }
+    `;
+
+    const barFsSource = `
+      precision mediump float;
+      uniform vec4 u_color;
+      void main() {
+        gl_FragColor = u_color;
+      }
+    `;
+
+    const circleFsSource = `
+      precision mediump float;
+      varying vec2 v_texCoord;
+      uniform vec4 u_color;
+      uniform float u_radius;
+      uniform float u_power;
+      void main() {
+        float r = u_radius;
+        vec2 p = v_texCoord - vec2(0.5);
+        float len = length(p);
+        if (len <= 0.5) {
+          float s = len - r;
+          if (s <= 0.0) {
+            gl_FragColor = u_color * 1.5;
+          } else {
+            float t = 1.0 - s / (0.5 - r);
+            float alpha = pow(t, u_power);
+            gl_FragColor = mix(vec4(u_color.rgb, 0.0), u_color * 1.5, alpha);
+          }
+        } else {
+          gl_FragColor = vec4(0.0);
+        }
+      }
+    `;
+
+    const vs = compileShader(gl, vsSource, gl.VERTEX_SHADER);
+    const barFs = compileShader(gl, barFsSource, gl.FRAGMENT_SHADER);
+    const circleFs = compileShader(gl, circleFsSource, gl.FRAGMENT_SHADER);
+    if (!vs || !barFs || !circleFs) return false;
+
+    barProgram = gl.createProgram();
+    gl.attachShader(barProgram, vs);
+    gl.attachShader(barProgram, barFs);
+    gl.linkProgram(barProgram);
+    if (!gl.getProgramParameter(barProgram, gl.LINK_STATUS)) {
+      console.error(gl.getProgramInfoLog(barProgram));
+      return false;
+    }
+
+    circleProgram = gl.createProgram();
+    gl.attachShader(circleProgram, vs);
+    gl.attachShader(circleProgram, circleFs);
+    gl.linkProgram(circleProgram);
+    if (!gl.getProgramParameter(circleProgram, gl.LINK_STATUS)) {
+      console.error(gl.getProgramInfoLog(circleProgram));
+      return false;
+    }
+
+    gl.useProgram(barProgram);
+    barColorLoc = gl.getUniformLocation(barProgram, 'u_color');
+    barPosLoc = gl.getAttribLocation(barProgram, 'a_position');
+    barTexLoc = gl.getAttribLocation(barProgram, 'a_texCoord');
+    gl.enableVertexAttribArray(barPosLoc);
+    gl.enableVertexAttribArray(barTexLoc);
+
+    gl.useProgram(circleProgram);
+    circleColorLoc = gl.getUniformLocation(circleProgram, 'u_color');
+    circleRadiusLoc = gl.getUniformLocation(circleProgram, 'u_radius');
+    circlePowerLoc = gl.getUniformLocation(circleProgram, 'u_power');
+    circlePosLoc = gl.getAttribLocation(circleProgram, 'a_position');
+    circleTexLoc = gl.getAttribLocation(circleProgram, 'a_texCoord');
+    gl.enableVertexAttribArray(circlePosLoc);
+    gl.enableVertexAttribArray(circleTexLoc);
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    return true;
+  }
+
+  function resizeWebGL() {
+    if (!glCanvas) return;
+    const container = document.querySelector('.viz-container');
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    glCanvas.width = rect.width;
+    glCanvas.height = rect.height;
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  }
+
+  function drawRectWithProgram(program, colorLoc, x1, y1, x2, y2, width, height, colorRgba) {
+    const nx1 = (x1 / width) * 2 - 1;
+    const ny1 = 1 - (y1 / height) * 2;
+    const nx2 = (x2 / width) * 2 - 1;
+    const ny2 = 1 - (y2 / height) * 2;
+
+    const verts = new Float32Array([
+      nx1, ny1, 0, 0,
+      nx2, ny1, 1, 0,
+      nx1, ny2, 0, 1,
+      nx2, ny2, 1, 1
+    ]);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STREAM_DRAW);
+
+    const posLoc = (program === barProgram) ? barPosLoc : circlePosLoc;
+    const texLoc = (program === barProgram) ? barTexLoc : circleTexLoc;
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 16, 8);
+    gl.uniform4f(colorLoc, colorRgba.r, colorRgba.g, colorRgba.b, colorRgba.a);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.deleteBuffer(buffer);
+  }
+
+  function drawBars(m, boundary) {
+    if (!gl) return;
+    gl.useProgram(barProgram);
+    const width = glCanvas.width;
+    const height = glCanvas.height;
+    const cellWidth = boundary.width / m;
+
+    for (let i = 0; i < m; i++) {
+      const t = outSmooth[i];
+      if (t < 0.001) continue;
+      const hue = i / m;
+      const color = hsvToRgb(hue, 0.75, 1.0);
+      const rgba = { r: color.r, g: color.g, b: color.b, a: 1.0 };
+      const centerX = boundary.x + i * cellWidth + cellWidth / 2;
+      const topY = boundary.y + boundary.height - boundary.height * 2 / 3 * t;
+      const bottomY = boundary.y + boundary.height;
+      const thick = cellWidth / 3 * Math.sqrt(t);
+      const x1 = centerX - thick * 0.5;
+      const x2 = centerX + thick * 0.5;
+      drawRectWithProgram(barProgram, barColorLoc, x1, topY, x2, bottomY, width, height, rgba);
+    }
+  }
+
+  function drawSmears(m, boundary) {
+    if (!gl) return;
+    const width = glCanvas.width;
+    const height = glCanvas.height;
+    const cellWidth = boundary.width / m;
+    const saturation = 0.75;
+    const value = 1.0;
+
+    gl.useProgram(circleProgram);
+    gl.uniform1f(circleRadiusLoc, 0.3);
+    gl.uniform1f(circlePowerLoc, 3.0);
+
+    for (let i = 0; i < m; i++) {
+      const start = outSmear[i];
+      const end = outSmooth[i];
+      if (start < 0.01 && end < 0.01) continue;
+      const hue = i / m;
+      const color = hsvToRgb(hue, saturation, value);
+      const brightness = 1.0;
+      gl.uniform4f(circleColorLoc, color.r * brightness, color.g * brightness, color.b * brightness, 1.0);
+
+      const centerX = boundary.x + i * cellWidth + cellWidth/2;
+      const startY = boundary.y + boundary.height - boundary.height * 2/3 * start;
+      const endY = boundary.y + boundary.height - boundary.height * 2/3 * end;
+      const radius = cellWidth * 3 * Math.sqrt(end);
+      let x1, y1, x2, y2;
+      let sourceRect;
+      if (endY >= startY) {
+        x1 = centerX - radius/2;
+        y1 = startY;
+        x2 = centerX + radius/2;
+        y2 = endY;
+        sourceRect = [0, 0, 1, 0.5];
+      } else {
+        x1 = centerX - radius/2;
+        y1 = endY;
+        x2 = centerX + radius/2;
+        y2 = startY;
+        sourceRect = [0, 0.5, 1, 0.5];
+      }
+      const nx1 = (x1 / width) * 2 - 1;
+      const ny1 = 1 - (y1 / height) * 2;
+      const nx2 = (x2 / width) * 2 - 1;
+      const ny2 = 1 - (y2 / height) * 2;
+      const texLeft = sourceRect[0];
+      const texRight = sourceRect[0] + sourceRect[2];
+      const texTop = sourceRect[1];
+      const texBottom = sourceRect[1] + sourceRect[3];
+      const positions = new Float32Array([
+        nx1, ny1, texLeft, texTop,
+        nx2, ny1, texRight, texTop,
+        nx1, ny2, texLeft, texBottom,
+        nx2, ny2, texRight, texBottom
+      ]);
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STREAM_DRAW);
+      gl.vertexAttribPointer(circlePosLoc, 2, gl.FLOAT, false, 16, 0);
+      gl.vertexAttribPointer(circleTexLoc, 2, gl.FLOAT, false, 16, 8);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.deleteBuffer(buffer);
+    }
+  }
+
+  function drawCircles(m, boundary) {
+    if (!gl) return;
+    const width = glCanvas.width;
+    const height = glCanvas.height;
+    const cellWidth = boundary.width / m;
+    const saturation = 0.75;
+    const value = 1;
+
+    gl.useProgram(circleProgram);
+    gl.uniform1f(circleRadiusLoc, 0.07);
+    gl.uniform1f(circlePowerLoc, 5.0);
+
+    for (let i = 0; i < m; i++) {
+      const t = outSmooth[i];
+      if (t < 0.008) continue;
+      const hue = i / m;
+      const color = hsvToRgb(hue, saturation, value);
+      gl.uniform4f(circleColorLoc, color.r, color.g, color.b, 1.0);
+
+      const centerX = boundary.x + i * cellWidth + cellWidth/2;
+      const centerY = boundary.y + boundary.height - boundary.height * 2/3 * t;
+      let radius = cellWidth * 6 * Math.sqrt(t);
+      const nx = (centerX / width) * 2 - 1;
+      const ny = 1 - (centerY / height) * 2;
+      const rw = (radius / width) * 2;
+      const rh = (radius / height) * 2;
+      const left = nx - rw;
+      const right = nx + rw;
+      const bottom = ny - rh;
+      const top = ny + rh;
+
+      const positions = new Float32Array([
+        left, bottom, 0, 0,
+        right, bottom, 1, 0,
+        left, top, 0, 1,
+        right, top, 1, 1
+      ]);
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STREAM_DRAW);
+      gl.vertexAttribPointer(circlePosLoc, 2, gl.FLOAT, false, 16, 0);
+      gl.vertexAttribPointer(circleTexLoc, 2, gl.FLOAT, false, 16, 8);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.deleteBuffer(buffer);
+    }
   }
 
   // ---------- Helper functions ----------
@@ -198,6 +430,7 @@
     const s = Math.floor(sec % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   }
+
   function setVolume(value) {
     let vol = Math.min(1, Math.max(0, value));
     currentVolume = vol;
@@ -206,6 +439,7 @@
     volumePercent.innerText = Math.round(vol * 100) + '%';
     updateRangeStyle(volumeSlider, vol, 1, '#5a6bc0', '#3a3a4a');
   }
+
   function toggleMute() {
     if (isMuted) {
       audioElement.volume = lastVolume;
@@ -218,10 +452,12 @@
       volumePercent.innerText = 'Mute';
     }
   }
+
   function updateRangeStyle(range, value, max, colorActive, colorInactive) {
     let percent = (value / max) * 100;
     range.style.background = `linear-gradient(to right, ${colorActive} 0%, ${colorActive} ${percent}%, ${colorInactive} ${percent}%, ${colorInactive} 100%)`;
   }
+
   function updateProgressRange() {
     if (audioElement && audioElement.duration) {
       let percent = (audioElement.currentTime / audioElement.duration) * 100;
@@ -229,7 +465,6 @@
     }
   }
 
-  // Reset visualization state (used when toggling UI to remove artifacts)
   function resetVisualizationState() {
     for (let i = 0; i < outSmooth.length; i++) {
       outSmooth[i] = 0;
@@ -238,11 +473,12 @@
     for (let i = 0; i < inRaw.length; i++) {
       inRaw[i] = 0;
     }
-    prevBarTopY = [];
-    prevBarRadius = [];
-    prevBarCount = 0;
     ctx.fillStyle = '#0D0C0C';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (gl) {
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
   }
 
   // ---------- Playlist management ----------
@@ -266,7 +502,6 @@
     URL.revokeObjectURL(playlist[idx].url);
     const wasCurrent = (idx === currentTrackIndex);
     playlist.splice(idx, 1);
-
     if (playlist.length === 0) {
       audioElement.pause();
       audioElement.src = '';
@@ -279,7 +514,6 @@
       renderPlaylist();
       return;
     }
-
     if (wasCurrent) {
       if (idx >= playlist.length) currentTrackIndex = playlist.length - 1;
       else currentTrackIndex = idx;
@@ -338,15 +572,18 @@
     isPlaying = true;
     playPauseBtn.innerHTML = '⏸';
   }
+
   function pauseCurrent() {
     audioElement.pause();
     isPlaying = false;
     playPauseBtn.innerHTML = '▶';
   }
+
   function togglePlayPause() {
     if (playlist.length === 0) return;
     isPlaying ? pauseCurrent() : playCurrent();
   }
+
   async function nextTrack() {
     if (playlist.length === 0) return;
     if (playMode === 'loop') {
@@ -363,6 +600,7 @@
     }
     await changeTrack(nextIdx, true);
   }
+
   async function prevTrack() {
     if (playlist.length === 0) return;
     let prevIdx = currentTrackIndex - 1;
@@ -373,6 +611,7 @@
     }
     await changeTrack(prevIdx, true);
   }
+
   async function changeTrack(index, autoPlay) {
     await loadTrack(index);
     if (autoPlay) await playCurrent();
@@ -381,6 +620,7 @@
     scrollToCurrent();
     resetVisualizationState();
   }
+
   function updateNowPlaying() {
     if (playlist.length && playlist[currentTrackIndex]) {
       nowPlayingLabel.innerText = `🎧 ${playlist[currentTrackIndex].name}`;
@@ -388,6 +628,7 @@
       nowPlayingLabel.innerText = '✨ No track loaded';
     }
   }
+
   function updateProgress() {
     if (audioElement && !isNaN(audioElement.duration) && audioElement.duration > 0) {
       const cur = audioElement.currentTime;
@@ -396,9 +637,9 @@
       updateProgressRange();
     }
   }
+
   function seekTo(val) { if (audioElement) audioElement.currentTime = parseFloat(val); }
 
-  // Render playlist (only currently playing song can scroll)
   function renderPlaylist() {
     playlistDiv.innerHTML = '';
     if (playlist.length === 0) {
@@ -458,10 +699,12 @@
       playlistDiv.appendChild(div);
     });
   }
+
   function scrollToCurrent() {
     const active = playlistDiv.querySelector('.playlist-item.active');
     if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
   function handleFiles(files) {
     for (let f of files) if (f.type.startsWith('audio/')) addTrack(f);
   }
@@ -516,6 +759,7 @@
       if (isResizingX) { isResizingX = false; document.body.style.cursor = ''; }
       if (isResizingY) { isResizingY = false; document.body.style.cursor = ''; }
       resizeCanvas();
+      resizeWebGL();
     });
   }
 
@@ -536,25 +780,37 @@
     canvas.height = rect.height;
     ctx.fillStyle = '#0D0C0C';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    resizeWebGL();
   }
 
   let lastFrameTime = 0;
+  let currentM = 0;
+
   function animate(timestamp) {
     let dt = Math.min(0.033, (timestamp - lastFrameTime) / 1000);
     if (lastFrameTime === 0) dt = 0.016;
     lastFrameTime = timestamp;
-    if (audioCtx && analyserNode && playlist.length > 0) {
+
+    if (isPlaying && audioCtx && analyserNode && playlist.length > 0) {
       let dataArray = new Float32Array(analyserNode.fftSize);
       analyserNode.getFloatTimeDomainData(dataArray);
       audioCallback(dataArray);
-      let m = fftAnalyze(dt);
-      const boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
-      fftRender(boundary, m);
-    } else {
-      ctx.fillStyle = '#0D0C0C';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      currentM = fftAnalyze(dt);
     }
-    if (audioElement && !audioElement.paused && !isNaN(audioElement.duration)) updateProgress();
+
+    const boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+    if (gl) {
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      drawBars(currentM, boundary);
+      drawSmears(currentM, boundary);
+      drawCircles(currentM, boundary);
+    }
+
+    if (audioElement && !audioElement.paused && !isNaN(audioElement.duration)) {
+      updateProgress();
+    }
+
     if (audioElement && audioElement.ended && playlist.length > 0) {
       if (playMode === 'loop') {
         audioElement.currentTime = 0;
@@ -563,6 +819,7 @@
         nextTrack().catch(e => console.warn);
       }
     }
+
     requestAnimationFrame(animate);
   }
 
@@ -602,28 +859,17 @@
   function handleKeydown(e) {
     const key = e.key.toLowerCase();
     if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-
     if (key === 'e') {
       e.preventDefault();
       const viz = document.querySelector('.viz-container');
-
-      // Fade out
       viz.classList.add('fade-out');
-
-      // Wait for fade-out animation to complete (200ms)
       setTimeout(() => {
-        // Toggle UI visibility
         document.body.classList.toggle('ui-hidden');
-
-        // Resize canvas and reset rendering state
         resizeCanvas();
         resetVisualizationState();
-
-        // Fade in
         viz.classList.remove('fade-out');
       }, 200);
-    }
-    else if (key === 'a') { e.preventDefault(); prevTrack(); }
+    } else if (key === 'a') { e.preventDefault(); prevTrack(); }
     else if (key === 'd') { e.preventDefault(); nextTrack(); }
     else if (key === 'w') { e.preventDefault(); setVolume(currentVolume + 0.1); }
     else if (key === 's') { e.preventDefault(); setVolume(currentVolume - 0.1); }
@@ -631,17 +877,12 @@
     else if (key === ' ') { e.preventDefault(); togglePlayPause(); }
     else if (key === 'c') {
       e.preventDefault();
-      // Cycle play modes
       const modes = ['list', 'shuffle', 'loop'];
       let nextIndex = (modes.indexOf(playMode) + 1) % modes.length;
       playMode = modes[nextIndex];
-      // Update UI highlight
       document.querySelectorAll('.mode-btn').forEach(btn => {
-        if (btn.getAttribute('data-mode') === playMode) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
+        if (btn.getAttribute('data-mode') === playMode) btn.classList.add('active');
+        else btn.classList.remove('active');
       });
     }
   }
@@ -653,7 +894,7 @@
       resizeTimer = setTimeout(() => {
         resizeCanvas();
         renderPlaylist();
-        resetVisualizationState();  // Reset on window resize to avoid scaling artifacts
+        resetVisualizationState();
         const panel = document.getElementById('controlPanel');
         const mainArea = document.querySelector('.main-area');
         if (panel && mainArea && panelHeight) {
@@ -675,6 +916,7 @@
     updateRangeStyle(progressSlider, 0, 1, '#5a6bc0', '#3a3a4a');
     document.addEventListener('keydown', handleKeydown);
     renderPlaylist();
+    if (!initWebGL()) console.warn('WebGL not supported, glow disabled');
     requestAnimationFrame(animate);
   }
   start();

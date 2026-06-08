@@ -21,6 +21,7 @@
   <div class="main-area">
     <div class="viz-container" id="vizContainer">
       <canvas id="visualizer-canvas"></canvas>
+      <canvas id="gl-canvas"></canvas>
     </div>
 
     <div class="control-panel" id="controlPanel">
@@ -34,12 +35,14 @@
         <input type="range" id="progressSlider" value="0" step="0.01">
       </div>
 
+      <!-- Button row: playback controls + add music + volume (order as requested) -->
       <div class="buttons-row">
         <div class="ctrl-group">
           <button class="ctrl-btn" id="prevBtn" title="Previous (A)">⏮</button>
           <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause (Space)">▶</button>
           <button class="ctrl-btn" id="nextBtn" title="Next (D)">⏭</button>
         </div>
+        <button class="upload-btn-inline" id="uploadBtn" title="Add Music (click)">➕ Add Music</button>
         <div class="volume-compact">
           <span class="volume-icon">🔊</span>
           <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8">
@@ -53,10 +56,8 @@
         <button class="mode-btn" data-mode="loop">🔂 Loop One</button>
       </div>
 
-      <div class="upload-area">
-        <button class="upload-btn" id="uploadBtn">➕ Add Music</button>
-        <input type="file" id="fileInput" multiple accept="audio/*" style="display:none">
-      </div>
+      <!-- Hidden file input (kept for functionality) -->
+      <input type="file" id="fileInput" multiple accept="audio/*" style="display:none">
 
       <div class="now-playing" id="nowPlayingLabel">✨ No track loaded</div>
       <div class="shortcut-hint">E: toggle UI | A/D: prev/next | W/S: volume | Q: mute | C: mode | Space: play/pause</div>

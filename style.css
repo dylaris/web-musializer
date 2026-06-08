@@ -41,7 +41,6 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  /* No green here */
 }
 
 .playlist-section {
@@ -106,7 +105,7 @@ body {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: #DB4B4B;  /* Red */
+  background: #DB4B4B;
   border: none;
   color: white;
   font-size: 16px;
@@ -218,7 +217,7 @@ body {
   border-radius: 10px;
 }
 
-/* Resize handles — extremely thin (2px), purple on hover */
+/* Resize handles — extremely thin, purple on hover */
 .resize-handle-y {
   position: absolute;
   top: -6px;
@@ -294,13 +293,14 @@ input[type="range"]::-webkit-slider-thumb {
   background: transparent;
 }
 
-/* Button row */
+/* Button row layout */
 .buttons-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin: 12px 0;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 .ctrl-group {
   display: flex;
@@ -335,9 +335,31 @@ input[type="range"]::-webkit-slider-thumb {
   transition: 0.1s;
 }
 .ctrl-btn:hover {
-  background: #4FD6BE;      /* Original #bb9af7 replaced */
+  background: #4FD6BE;
   color: #1a1b26;
   transform: scale(1.03);
+}
+
+/* Inline upload button style (matches control group aesthetics) */
+.upload-btn-inline {
+  background: rgba(40, 42, 58, 0.9);
+  border: none;
+  color: #c0caf5;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 32px;
+  cursor: pointer;
+  transition: 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.upload-btn-inline:hover {
+  background: #4FD6BE;
+  color: #1a1b26;
+  transform: scale(1.02);
 }
 
 /* Mode buttons */
@@ -359,31 +381,10 @@ input[type="range"]::-webkit-slider-thumb {
   transition: 0.1s;
 }
 .mode-btn.active {
-  background: #73DACA;  /* Cyan-green, current mode */
+  background: #73DACA;
   border-color: #73DACA;
   color: #1a1b26;
   font-weight: bold;
-}
-
-/* Upload area */
-.upload-area {
-  margin: 10px 0;
-}
-.upload-btn {
-  background: rgba(40, 42, 58, 0.8);
-  border: 1px solid #2c2e3a;  /* Subtle dark border, no purple */
-  padding: 8px;
-  border-radius: 40px;
-  width: 100%;
-  font-size: 12px;
-  cursor: pointer;
-  color: #c0caf5;
-  transition: 0.1s;
-}
-.upload-btn:hover {
-  background: #4FD6BE;      /* Original #7aa2f7 replaced */
-  color: #1a1b26;
-  border-color: #4FD6BE;    /* Unify border */
 }
 
 .now-playing {
@@ -393,7 +394,7 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #73DACA;  /* Cyan-green accent */
+  color: #73DACA;
 }
 .shortcut-hint {
   font-size: 10px;
@@ -415,4 +416,26 @@ input[type="range"]::-webkit-slider-thumb {
   .volume-compact {
     padding: 2px 8px;
   }
+  .upload-btn-inline {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .buttons-row {
+    gap: 10px;
+  }
+}
+
+/* Make two canvases overlap */
+.viz-container {
+  position: relative;
+}
+#visualizer-canvas, #gl-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+#gl-canvas {
+  pointer-events: none;
 }
