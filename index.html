@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Web Musializer</title>
-  <link rel="icon" type="image/png" href="logo.png">
+  <title>Web Musializer - Spectral Flow</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- LEFT PLAYLIST SIDEBAR -->
   <div class="playlist-sidebar" id="playlistSidebar">
     <div class="playlist-header">
-      <h2>🎵 MUSIALIZER</h2>
+      <input type="text" class="search-box" id="searchInput" placeholder="Search... (typing disables shortcuts)" autocomplete="off">
     </div>
     <div class="playlist-section" id="playlistContainer">
       <div class="empty-playlist">🎤 Click below to add music</div>
@@ -18,6 +18,7 @@
     <div class="resize-handle-x" id="resizeHandleX"></div>
   </div>
 
+  <!-- MAIN AREA: VISUALIZATION + CONTROL PANEL -->
   <div class="main-area">
     <div class="viz-container" id="vizContainer">
       <canvas id="visualizer-canvas"></canvas>
@@ -27,6 +28,7 @@
     <div class="control-panel" id="controlPanel">
       <div class="resize-handle-y" id="resizeHandleY"></div>
 
+      <!-- PROGRESS BAR AREA -->
       <div class="progress-area">
         <div class="time-row">
           <span id="currentTime">0:00</span>
@@ -35,32 +37,61 @@
         <input type="range" id="progressSlider" value="0" step="0.01">
       </div>
 
-      <!-- Button row: playback controls + add music + volume (order as requested) -->
-      <div class="buttons-row">
+      <!-- BUTTON ROW: all interactive controls (icons only, volume at the end) -->
+      <div class="buttons-row" id="buttonsRow">
+        <!-- Playback controls group -->
         <div class="ctrl-group">
           <button class="ctrl-btn" id="prevBtn" title="Previous (A)">⏮</button>
           <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause (Space)">▶</button>
           <button class="ctrl-btn" id="nextBtn" title="Next (D)">⏭</button>
         </div>
-        <button class="upload-btn-inline" id="uploadBtn" title="Add Music (click)">➕ Add Music</button>
+
+        <!-- Mode switch group (3 icon buttons, no text) -->
+        <div class="mode-group">
+          <button class="mode-btn" data-mode="list" title="List repeat">🔁</button>
+          <button class="mode-btn" data-mode="shuffle" title="Shuffle">🔀</button>
+          <button class="mode-btn" data-mode="loop" title="Single repeat">🔂</button>
+        </div>
+
+        <!-- Add music button -->
+        <button class="upload-btn-inline" id="uploadBtn" title="Add music">➕</button>
+
+        <!-- Help button -->
+        <button class="help-btn-icon" id="helpBtn" title="Shortcuts (?)">❓</button>
+
+        <!-- Volume control: icon + slider + percent, placed at the very end of button row -->
         <div class="volume-compact">
-          <span class="volume-icon">🔊</span>
+          <span class="volume-icon" id="volumeIcon" title="Volume">🔊</span>
           <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8">
           <span class="volume-percent" id="volumePercent">80%</span>
         </div>
+
       </div>
 
-      <div class="mode-buttons">
-        <button class="mode-btn" data-mode="list">📋 List Loop</button>
-        <button class="mode-btn" data-mode="shuffle">🎲 Shuffle</button>
-        <button class="mode-btn" data-mode="loop">🔂 Loop One</button>
-      </div>
-
-      <!-- Hidden file input (kept for functionality) -->
-      <input type="file" id="fileInput" multiple accept="audio/*" style="display:none">
-
+      <!-- NOW PLAYING: moved to bottom of control panel -->
       <div class="now-playing" id="nowPlayingLabel">✨ No track loaded</div>
-      <div class="shortcut-hint">E: toggle UI | A/D: prev/next | W/S: volume | Q: mute | C: mode | Space: play/pause</div>
+
+      <input type="file" id="fileInput" multiple accept="audio/*" style="display:none">
+    </div>
+  </div>
+
+  <!-- HELP MODAL (keyboard shortcuts) -->
+  <div class="help-modal" id="helpModal">
+    <div class="help-card">
+      <div class="help-header">
+        <h3>⌨️ Keyboard Guide</h3>
+        <button class="close-help" id="closeHelpBtn">✕</button>
+      </div>
+      <div class="help-content">
+        <p><kbd>Space</kbd> <span>Play / Pause</span></p>
+        <p><kbd>A</kbd> <span>Previous track</span></p>
+        <p><kbd>D</kbd> <span>Next track</span></p>
+        <p><kbd>W / S</kbd> <span>Volume up / down</span></p>
+        <p><kbd>Q</kbd> <span>Mute / unmute</span></p>
+        <p><kbd>C</kbd> <span>Cycle play mode</span></p>
+        <p><kbd>E</kbd> <span>Toggle UI visibility</span></p>
+        <p style="border-bottom: none;"><span>🎵 Click on playlist to play</span></p>
+      </div>
     </div>
   </div>
 
